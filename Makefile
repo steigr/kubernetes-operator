@@ -95,7 +95,7 @@ e2e: deepcopy-gen manifests ## Runs e2e tests, you can use EXTRA_ARGS
 		-jenkins-api-hostname=$(JENKINS_API_HOSTNAME) -jenkins-api-port=$(JENKINS_API_PORT) -jenkins-api-use-nodeport=$(JENKINS_API_USE_NODEPORT) $(E2E_TEST_ARGS)
 
 .PHONY: helm-e2e
-IMAGE_NAME := $(QUAY_REGISTRY):$(GITCOMMIT)-amd64
+IMAGE_NAME := quay.io/$(QUAY_ORGANIZATION)/$(QUAY_REGISTRY):$(GITCOMMIT)-amd64
 
 helm-e2e: helm container-runtime-build-amd64 ## Runs helm e2e tests, you can use EXTRA_ARGS
 	@echo "+ $@"
@@ -139,6 +139,13 @@ verify: fmt lint test staticcheck vet ## Verify the code
 install: ## Installs the executable
 	@echo "+ $@"
 	go install -tags "$(BUILDTAGS)" ${GO_LDFLAGS} $(BUILD_PATH)
+
+.PHONY: update-lts-version
+update-lts-version: ## Update the latest lts version
+	@echo "+ $@"
+	sed -i 's|jenkins/jenkins:[0-9]\+.[0-9]\+.[0-9]\+|jenkins/jenkins:$(LATEST_LTS_VERSION)|g' chart/jenkins-operator/values.yaml
+	sed -i 's|jenkins/jenkins:[0-9]\+.[0-9]\+.[0-9]\+|jenkins/jenkins:$(LATEST_LTS_VERSION)|g' test/e2e/test_utility.go
+	sed -i 's|jenkins/jenkins:[0-9]\+.[0-9]\+.[0-9]\+|jenkins/jenkins:$(LATEST_LTS_VERSION)|g' test/helm/helm_test.go
 
 .PHONY: run
 run: export WATCH_NAMESPACE = $(NAMESPACE)
@@ -214,7 +221,7 @@ container-runtime-build-%: ## Build the container
 		--output=type=docker --platform linux/$* \
 		--build-arg GO_VERSION=$(GO_VERSION) \
 		--build-arg CTIMEVAR="$(CTIMEVAR)" \
-		--tag $(QUAY_REGISTRY):$(GITCOMMIT)-$* . \
+		--tag quay.io/$(QUAY_ORGANIZATION)/$(QUAY_REGISTRY):$(GITCOMMIT)-$* . \
 		--file Dockerfile $(CONTAINER_RUNTIME_EXTRA_ARGS)
 
 .PHONY: container-runtime-build
@@ -282,7 +289,7 @@ container-runtime-run: ## Run the container in docker, you can use EXTRA_ARGS
 	@echo "+ $@"
 	$(CONTAINER_RUNTIME_COMMAND) run $(CONTAINER_RUNTIME_EXTRA_ARGS) --rm -i $(DOCKER_FLAGS) \
 		--volume $(HOME)/.kube/config:/home/jenkins-operator/.kube/config \
-		$(QUAY_REGISTRY):$(GITCOMMIT) /usr/bin/jenkins-operator $(OPERATOR_ARGS)
+		quay.io/${QUAY_ORGANIZATION}/$(QUAY_REGISTRY):$(GITCOMMIT) /usr/bin/jenkins-operator $(OPERATOR_ARGS)
 
 .PHONY: minikube-run
 minikube-run: export WATCH_NAMESPACE = $(NAMESPACE)
@@ -356,6 +363,36 @@ minikube-start: minikube check-minikube ## Start minikube
 	bin/minikube status && exit 0 || \
 	bin/minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --dns-domain=$(CLUSTER_DOMAIN) --extra-config=kubelet.cluster-domain=$(CLUSTER_DOMAIN) --driver=$(MINIKUBE_DRIVER) --memory $(MEMORY_AMOUNT) --cpus $(CPUS_NUMBER)
 
+.PHONY: minikube-destroy
+minikube-destroy: ## Stop and destroy minikube
+	@echo "+ $@"
+	bin/minikube stop
+	bin/minikube delete
+
+.PHONY: kind-setup
+kind-setup: ## Setup kind cluster
+	@echo "+ $@"
+	kind create cluster --name $(KIND_CLUSTER_NAME)
+
+.PHONY: kind-clean
+kind-clean: ## Delete kind cluster
+	@echo "+ $@"
+	kind delete cluster --name $(KIND_CLUSTER_NAME)
+
+.PHONY: bats-tests
+IMAGE_NAME := quay.io/$(QUAY_ORGANIZATION)/$(QUAY_REGISTRY):$(GITCOMMIT)-amd64
+BUILD_PRESENT := $(shell docker images |grep -q ${IMAGE_NAME})
+ifndef BUILD_PRESENT
+bats-tests: container-runtime-build-amd64 ## Run bats tests
+	@echo "+ $@"
+	kind load docker-image ${IMAGE_NAME} --name $(KIND_CLUSTER_NAME)
+	OPERATOR_IMAGE="${IMAGE_NAME}" TERM=xterm bats -T -p -x test/bats
+else
+bats-tests: ## Run bats tests
+	@echo "+ $@"
+	OPERATOR_IMAGE="${IMAGE_NAME}" TERM=xterm bats -T -p -x test/bats
+endif
+
 .PHONY: crc-start
 crc-start: check-crc ## Start CodeReady Containers Kubernetes cluster
 	@echo "+ $@"
@@ -417,7 +454,7 @@ ifneq ($(GITUNTRACKEDCHANGES),)
 endif
 ifneq ($(GITIGNOREDBUTTRACKEDCHANGES),)
 	@echo "Ignored but tracked files:"
-	@git ls-files -i --exclude-standard
+	@git ls-files -i -c --exclude-standard
 	@echo
 endif
 	@echo "Dependencies:"
@@ -474,7 +511,7 @@ uninstall-crds: manifests kustomize
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests kustomize
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(QUAY_REGISTRY):$(GITCOMMIT)
+	cd config/manager && $(KUSTOMIZE) edit set image controller=quay.io/$(QUAY_ORGANIZATION)/$(QUAY_REGISTRY):$(GITCOMMIT)
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 # UnDeploy controller from the configured Kubernetes cluster in ~/.kube/config

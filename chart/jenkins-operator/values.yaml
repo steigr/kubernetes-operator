@@ -27,16 +27,13 @@ jenkins:
   # nodeSelector are injected into metadata nodeSelector field
   nodeSelector: {}
 
-  # tolerations are injected into metadata tolerations field
-  tolerations: []
-
   # annotations are injected into metadata annotations field
   annotations: {}
 
   # image is the name (and tag) of the Jenkins instance
   # Default: jenkins/jenkins:lts
   # It's recommended to use LTS (tag: "lts") version
-  image: jenkins/jenkins:2.375.3-lts
+  image: jenkins/jenkins:2.387.1-lts
 
   # env contains jenkins container environment variables
   env: []
@@ -90,15 +87,15 @@ jenkins:
   #
   # basePlugins:
   # - name: kubernetes
-  #   version: 3883.v4d70a_a_a_df034
+  #   version: 3896.v19b_160fd9589
   # - name: workflow-job
-  #   version: 1282.ve6d865025906
+  #   version: 1284.v2fe8ed4573d4
   # - name: workflow-aggregator
-  #   version: 590.v6a_d052e5a_a_b_5
+  #   version: 596.v8c21c963d92d
   # - name: git
   #   version: 5.0.0
   # - name: job-dsl
-  #   version: "1.81"
+  #   version: "1.82"
   # - name: configuration-as-code
   #   version: 1569.vb_72405b_80249
   # - name: kubernetes-credentials-provider
@@ -116,6 +113,12 @@ jenkins:
   # - name: simple-theme-plugin
   #   version: "0.6"
   plugins: []
+
+  # latestPlugins: Allow to override jenkins-plugin-cli default behavior
+  # while downloading the plugin and dependencies
+  # see: https://github.com/jenkinsci/plugin-installation-manager-tool#cli-options
+  # default to true
+  latestPlugins: true
 
   # seedJobs is placeholder for jenkins seed jobs
   # For seed job creation tutorial, check https://jenkinsci.github.io/kubernetes-operator/docs/getting-started/latest/configuring-seed-jobs-and-pipelines/

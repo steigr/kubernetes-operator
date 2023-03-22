@@ -95,9 +95,6 @@ spec:
     {{- with .Values.jenkins.nodeSelector }}
     nodeSelector: {{ toYaml . | nindent 6 }}
     {{- end }}
-    {{- with .Values.jenkins.tolerations }}
-    tolerations: {{ toYaml . | nindent 6 }}
-    {{- end }}
     {{- with .Values.jenkins.annotations }}
     annotations: {{ toYaml . | nindent 6 }}
     {{- end }}
@@ -107,6 +104,7 @@ spec:
     {{- with .Values.jenkins.plugins }}
     plugins: {{ toYaml . | nindent 4 }}
     {{- end }}
+    latestPlugins: {{ .Values.jenkins.latestPlugins }}
     {{- if .Values.jenkins.priorityClassName }}
     priorityClassName: {{ .Values.jenkins.priorityClassName }}
     {{- end }}
