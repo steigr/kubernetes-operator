@@ -8,12 +8,14 @@ Kubernetes native operator which fully manages Jenkins on Kubernetes
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.jetstack.io | cert-manager | 1.5.1 |
+|  | cert-manager-crds | 1.14.2 |
+| https://charts.jetstack.io | cert-manager | 1.14.2 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| cert-manager.enabled | bool | `false` |  |
 | cert-manager.startupapicheck.enabled | bool | `false` |  |
 | jenkins.annotations | object | `{}` |  |
 | jenkins.apiVersion | string | `"jenkins.io/v1alpha2"` |  |
