@@ -111,6 +111,8 @@ func verifyJenkinsMasterPodAttributes(jenkins *v1alpha2.Jenkins) {
 	jenkinsPod := getJenkinsMasterPod(jenkins)
 	jenkins = getJenkins(jenkins.Namespace, jenkins.Name)
 
+	defaultGracePeriod := constants.DefaultTerminationGracePeriodSeconds
+
 	assertMapContainsElementsFromAnotherMap(jenkins.Spec.Master.Annotations, jenkinsPod.ObjectMeta.Annotations)
 	Expect(jenkinsPod.Spec.NodeSelector).Should(Equal(jenkins.Spec.Master.NodeSelector))
 
@@ -125,6 +127,7 @@ func verifyJenkinsMasterPodAttributes(jenkins *v1alpha2.Jenkins) {
 
 	Expect(jenkinsPod.Labels).Should(Equal(resources.GetJenkinsMasterPodLabels(*jenkins)))
 	Expect(jenkinsPod.Spec.PriorityClassName).Should(Equal(jenkins.Spec.Master.PriorityClassName))
+	Expect(jenkinsPod.Spec.TerminationGracePeriodSeconds).Should(Equal(&defaultGracePeriod))
 
 	for _, actualContainer := range jenkinsPod.Spec.Containers {
 		if actualContainer.Name == resources.JenkinsMasterContainerName {
