@@ -26,7 +26,7 @@ spec:
           image: {{ .Values.operator.image }}
           imagePullPolicy: {{ .Values.operator.imagePullPolicy }}
           ports:
-            - name: http
+            - name: {{ .Values.jenkins.service.portName }}
               containerPort: 80
               protocol: TCP
           command:
