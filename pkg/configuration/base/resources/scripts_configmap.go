@@ -19,9 +19,9 @@ var requiredBasePlugins = []string{"configuration-as-code", "git", "job-dsl", "k
 
 var initBashTemplate = template.Must(template.New(InitScriptName).Parse(`#!/usr/bin/env bash
 set -e
-set -x
 
 if [ "${DEBUG_JENKINS_OPERATOR}" == "true" ]; then
+	set -x
 	echo "Printing debug messages - begin"
 	id
 	env
