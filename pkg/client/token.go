@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jenkinsci/kubernetes-operator/pkg/log"
 	"github.com/pkg/errors"
+
+	"github.com/jenkinsci/kubernetes-operator/pkg/log"
 )
 
 type userTokenResponseData struct {

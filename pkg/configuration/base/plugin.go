@@ -3,13 +3,13 @@ package base
 import (
 	"fmt"
 
+	"github.com/bndr/gojenkins"
+	stackerr "github.com/pkg/errors"
+
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
 	jenkinsclient "github.com/jenkinsci/kubernetes-operator/pkg/client"
-
-	"github.com/bndr/gojenkins"
 	"github.com/jenkinsci/kubernetes-operator/pkg/log"
 	"github.com/jenkinsci/kubernetes-operator/pkg/plugins"
-	stackerr "github.com/pkg/errors"
 )
 
 func (r *JenkinsBaseConfigurationReconciler) verifyPlugins(jenkinsClient jenkinsclient.Jenkins) (bool, error) {

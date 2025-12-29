@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/bndr/gojenkins"
-	"github.com/jenkinsci/kubernetes-operator/pkg/log"
 	"github.com/pkg/errors"
+
+	"github.com/jenkinsci/kubernetes-operator/pkg/log"
 )
 
 // GroovyScriptExecutionFailed is custom error type which indicates passed groovy script is invalid
