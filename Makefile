@@ -65,6 +65,8 @@ fmt: ## Verifies all files have been `gofmt`ed
 	@echo "+ $@"
 	@go fmt $(PACKAGES)
 
+GOLANGCI_LINT_ARGS ?= --timeout=5m
+
 .PHONY: lint
 HAS_GOLINT := $(shell which $(PROJECT_DIR)/bin/golangci-lint)
 lint: ## Verifies `golint` passes
@@ -72,11 +74,11 @@ lint: ## Verifies `golint` passes
 ifndef HAS_GOLINT
 	GOBIN=$(PROJECT_DIR)/bin go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0
 endif
-	@bin/golangci-lint run
+	@bin/golangci-lint run $(GOLANGCI_LINT_ARGS)
 
 .PHONY: lint-fix
 lint-fix: golangci-lint ## Run golangci-lint linter and perform fixes
-	@bin/golangci-lint run --fix
+	@bin/golangci-lint run --fix $(GOLANGCI_LINT_ARGS)
 
 .PHONY: goimports
 HAS_GOIMPORTS := $(shell which $(PROJECT_DIR)/bin/goimports)
