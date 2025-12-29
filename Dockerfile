@@ -6,6 +6,10 @@ ARG CTIMEVAR
 ARG TARGETOS
 ARG TARGETARCH
 
+ARG GOPRIVATE=''
+ARG GOPROXY=''
+ARG GONOSUMDB=''
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod

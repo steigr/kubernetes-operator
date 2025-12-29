@@ -15,9 +15,9 @@ issues:
 linters:
   disable-all: true
   enable:
+    - copyloopvar
     - dupl
     - errcheck
-    - exportloopref
     - goconst
     - gocyclo
     - gofmt
@@ -39,3 +39,6 @@ output:
     - file
     - severity
     - linter
+linters-settings:
+  goimports:
+    local-prefixes: github.com/jenkinsci/kubernetes-operator

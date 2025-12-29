@@ -289,13 +289,13 @@ release: $(wildcard *.go) $(wildcard */*.go) VERSION.txt ## Builds the cross-com
 	$(foreach GOOSARCH,$(GOOSARCHES), $(call buildrelease,$(subst /,,$(dir $(GOOSARCH))),$(notdir $(GOOSARCH))))
 
 .PHONY: checkmake
-HAS_CHECKMAKE := $(shell which checkmake)
+HAS_CHECKMAKE := $(shell which $(PROJECT_DIR)/bin/checkmake)
 checkmake: ## Check this Makefile
 	@echo "+ $@"
 ifndef HAS_CHECKMAKE
-	go get -u github.com/mrtazz/checkmake
+	GOBIN=$(PROJECT_DIR)/bin go install github.com/mrtazz/checkmake/cmd/checkmake@0.2.2
 endif
-	@checkmake Makefile
+	@$(PROJECT_DIR)/bin/checkmake Makefile
 
 .PHONY: container-runtime-login
 container-runtime-login: ## Log in into the Docker repository
