@@ -12,6 +12,10 @@ import (
 	"github.com/jenkinsci/kubernetes-operator/pkg/plugins"
 )
 
+const (
+	PLUGIN_VERSION_LATEST = "latest"
+)
+
 func (r *JenkinsBaseConfigurationReconciler) verifyPlugins(jenkinsClient jenkinsclient.Jenkins) (bool, error) {
 	if r.Configuration.Jenkins.Spec.Master.SkipPlugins != nil && *r.Configuration.Jenkins.Spec.Master.SkipPlugins {
 		return true, nil
@@ -36,6 +40,9 @@ func (r *JenkinsBaseConfigurationReconciler) verifyPlugins(jenkinsClient jenkins
 			if _, ok := isPluginInstalled(allPluginsInJenkins, plugin); !ok {
 				r.logger.V(log.VWarn).Info(fmt.Sprintf("Missing plugin '%s'", plugin))
 				status = false
+				continue
+			}
+			if plugin.Version == PLUGIN_VERSION_LATEST {
 				continue
 			}
 			if found, ok := isPluginVersionCompatible(allPluginsInJenkins, plugin); !ok {
