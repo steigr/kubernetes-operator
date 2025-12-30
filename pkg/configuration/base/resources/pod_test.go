@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestGetJenkinsMasterPodBaseVolumes(t *testing.T) {
