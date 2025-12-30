@@ -88,12 +88,6 @@ func (r *JenkinsBaseConfigurationReconciler) checkForPodRecreation(currentJenkin
 			currentJenkinsMasterPod.ObjectMeta.Annotations, r.Configuration.Jenkins.Spec.Master.Annotations))
 	}
 
-	if !r.compareVolumes(currentJenkinsMasterPod) {
-		messages = append(messages, "Jenkins pod volumes have changed")
-		verbose = append(verbose, fmt.Sprintf("Jenkins pod volumes have changed, actual '%v' required '%v'",
-			currentJenkinsMasterPod.Spec.Volumes, r.Configuration.Jenkins.Spec.Master.Volumes))
-	}
-
 	if len(r.Configuration.Jenkins.Spec.Master.Containers) != len(currentJenkinsMasterPod.Spec.Containers) {
 		messages = append(messages, "Jenkins amount of containers has changed")
 		verbose = append(verbose, fmt.Sprintf("Jenkins amount of containers has changed, actual '%+v' required '%+v'",

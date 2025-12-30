@@ -305,6 +305,11 @@ func (r *JenkinsBaseConfigurationReconciler) compareVolumes(actualPod corev1.Pod
 			continue
 		}
 
+		const jenkinsHomeVolumeName = "jenkins-home"
+		if volume.Name == jenkinsHomeVolumeName {
+			continue
+		}
+
 		toCompare = append(toCompare, volume)
 	}
 
