@@ -48,7 +48,7 @@ BUILD_TAG := $(GITBRANCH)-$(GITCOMMIT)
 BUILD_PATH := ./cmd/main.go
 
 # CONTAINER_RUNTIME_COMMAND is Container Runtime - it could be docker or podman
-CONTAINER_RUNTIME_COMMAND := docker
+CONTAINER_RUNTIME_COMMAND ?= docker
 
 # Set any default go build tags
 BUILDTAGS :=
