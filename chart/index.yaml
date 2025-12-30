@@ -3,7 +3,7 @@ entries:
   jenkins-operator:
   - apiVersion: v2
     appVersion: 0.9.0-beta1
-    created: "2025-12-21T14:56:58.785096582Z"
+    created: "2025-12-30T11:31:18.466112+01:00"
     dependencies:
     - condition: cert-manager.enabled
       name: cert-manager
@@ -14,7 +14,7 @@ entries:
       repository: ""
       version: 1.14.2
     description: Kubernetes native operator which fully manages Jenkins on Kubernetes
-    digest: 1af5fde5008ce4e7166058e7d04f78f0a720af08ce3e00af55eabd71476e56f5
+    digest: 92279c146002e367b61e9e33129ec5cb14cd1569c313eba9afbdc9cd64c2b369
     icon: https://raw.githubusercontent.com/jenkinsci/kubernetes-operator/master/assets/jenkins-operator-icon.png
     name: jenkins-operator
     urls:
@@ -435,4 +435,4 @@ entries:
     urls:
     - https://raw.githubusercontent.com/jenkinsci/kubernetes-operator/master/chart/jenkins-operator/jenkins-operator-0.0.1.tgz
     version: 0.0.1
-generated: "2025-12-21T14:56:58.764612857Z"
+generated: "2025-12-30T11:31:18.462295+01:00"
