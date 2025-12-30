@@ -305,18 +305,23 @@ func (r *JenkinsBaseConfigurationReconciler) compareVolumes(actualPod corev1.Pod
 			continue
 		}
 
-		const jenkinsHomeVolumeName = "jenkins-home"
-		if volume.Name == jenkinsHomeVolumeName {
+		if volume.Name == resources.JenkinsHomeVolumeName {
 			continue
 		}
 
 		toCompare = append(toCompare, volume)
 	}
 
-	return reflect.DeepEqual(
-		append(resources.GetJenkinsMasterPodBaseVolumes(r.Configuration.Jenkins), r.Configuration.Jenkins.Spec.Master.Volumes...),
-		toCompare,
-	)
+	// Filter JenkinsHomeVolumeName from expected volumes as well
+	var expectedVolumes []corev1.Volume
+	for _, volume := range append(resources.GetJenkinsMasterPodBaseVolumes(r.Configuration.Jenkins), r.Configuration.Jenkins.Spec.Master.Volumes...) {
+		if volume.Name == resources.JenkinsHomeVolumeName {
+			continue
+		}
+		expectedVolumes = append(expectedVolumes, volume)
+	}
+
+	return reflect.DeepEqual(expectedVolumes, toCompare)
 }
 
 func (r *JenkinsBaseConfigurationReconciler) detectJenkinsMasterPodStartingIssues() (stopReconcileLoop bool, err error) {

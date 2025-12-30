@@ -80,6 +80,9 @@ func GetJenkinsMasterContainerBaseEnvs(jenkins *v1alpha2.Jenkins) []corev1.EnvVa
 // getJenkinsHomePath fetches the Home Path for Jenkins
 func getJenkinsHomePath(jenkins *v1alpha2.Jenkins) string {
 	defaultJenkinsHomePath := "/var/lib/jenkins"
+	if len(jenkins.Spec.Master.Containers) == 0 {
+		return defaultJenkinsHomePath
+	}
 	for _, envVar := range jenkins.Spec.Master.Containers[0].Env {
 		if envVar.Name == "JENKINS_HOME" {
 			return envVar.Value
@@ -93,45 +96,62 @@ func GetJenkinsMasterPodBaseVolumes(jenkins *v1alpha2.Jenkins) []corev1.Volume {
 	configMapVolumeSourceDefaultMode := corev1.ConfigMapVolumeSourceDefaultMode
 	secretVolumeSourceDefaultMode := corev1.SecretVolumeSourceDefaultMode
 	var scriptsVolumeDefaultMode int32 = 0777
-	volumes := []corev1.Volume{
-		{
+	var volumes []corev1.Volume
+
+	hasJenkinsHomeVolumeMount := false
+	if len(jenkins.Spec.Master.Containers) > 0 && len(jenkins.Spec.Master.Containers[0].VolumeMounts) > 0 {
+		for _, volumeMount := range jenkins.Spec.Master.Containers[0].VolumeMounts {
+			if volumeMount.Name == JenkinsHomeVolumeName {
+				hasJenkinsHomeVolumeMount = true
+				break
+			}
+		}
+	}
+
+	if !hasJenkinsHomeVolumeMount {
+		volumes = append(volumes, corev1.Volume{
 			Name: JenkinsHomeVolumeName,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
-		},
-		{
-			Name: jenkinsScriptsVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: &scriptsVolumeDefaultMode,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: getScriptsConfigMapName(jenkins),
-					},
-				},
-			},
-		},
-		{
-			Name: jenkinsInitConfigurationVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: &configMapVolumeSourceDefaultMode,
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: GetInitConfigurationConfigMapName(jenkins),
-					},
-				},
-			},
-		},
-		{
-			Name: jenkinsOperatorCredentialsVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: &secretVolumeSourceDefaultMode,
-					SecretName:  GetOperatorCredentialsSecretName(jenkins),
-				},
-			},
-		},
+		})
 	}
+
+	volumes = append(volumes,
+		[]corev1.Volume{
+			{
+				Name: jenkinsScriptsVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						DefaultMode: &scriptsVolumeDefaultMode,
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: getScriptsConfigMapName(jenkins),
+						},
+					},
+				},
+			},
+			{
+				Name: jenkinsInitConfigurationVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						DefaultMode: &configMapVolumeSourceDefaultMode,
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: GetInitConfigurationConfigMapName(jenkins),
+						},
+					},
+				},
+			},
+			{
+				Name: jenkinsOperatorCredentialsVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						DefaultMode: &secretVolumeSourceDefaultMode,
+						SecretName:  GetOperatorCredentialsSecretName(jenkins),
+					},
+				},
+			},
+		}...,
+	)
 
 	if len(jenkins.Spec.GroovyScripts.Secret.Name) > 0 {
 		volumes = append(volumes, corev1.Volume{
@@ -289,6 +309,9 @@ func setLivenessAndReadinessPath(jenkins *v1alpha2.Jenkins) {
 
 // GetJenkinsOpts gets JENKINS_OPTS env parameter, parses it's values and returns it as a map`
 func GetJenkinsOpts(jenkins v1alpha2.Jenkins) map[string]string {
+	if len(jenkins.Spec.Master.Containers) == 0 {
+		return nil
+	}
 	envs := jenkins.Spec.Master.Containers[0].Env
 	jenkinsOpts := make(map[string]string)
 
