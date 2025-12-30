@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	r "runtime"
+	"strings"
 
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
 	controllers "github.com/jenkinsci/kubernetes-operator/internal/controller"
@@ -112,7 +113,25 @@ func main() {
 	if !found {
 		fatal(errors.New("failed to get watch namespace, please set up WATCH_NAMESPACE environment variable"), *debug)
 	}
-	logger.Info(fmt.Sprintf("Watch namespace: %v", namespace))
+
+	// Parse comma-separated namespaces
+	namespaces := []string{}
+	for _, ns := range strings.Split(namespace, ",") {
+		trimmed := strings.TrimSpace(ns)
+		if trimmed != "" {
+			namespaces = append(namespaces, trimmed)
+		}
+	}
+
+	if len(namespaces) == 0 {
+		fatal(errors.New("WATCH_NAMESPACE is empty or contains only whitespace"), *debug)
+	}
+
+	if len(namespaces) == 1 {
+		logger.Info(fmt.Sprintf("Watch namespace: %v", namespaces[0]))
+	} else {
+		logger.Info(fmt.Sprintf("Watch namespaces: %v", namespaces))
+	}
 
 	if validateSecurityWarnings {
 		securityWarningsFetched := make(chan bool)
@@ -130,7 +149,9 @@ func main() {
 	}
 
 	cacheNamespace := map[string]cache.Config{}
-	cacheNamespace[namespace] = cache.Config{}
+	for _, ns := range namespaces {
+		cacheNamespace[ns] = cache.Config{}
+	}
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		// MetricsBindAddress:      fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		Metrics: server.Options{
