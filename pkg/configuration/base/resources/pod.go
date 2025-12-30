@@ -189,12 +189,19 @@ func getConfigurationAsCodeSecretVolumeName(jenkins *v1alpha2.Jenkins) string {
 
 // GetJenkinsMasterContainerBaseVolumeMounts returns Jenkins master pod volume mounts required by operator
 func GetJenkinsMasterContainerBaseVolumeMounts(jenkins *v1alpha2.Jenkins) []corev1.VolumeMount {
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      JenkinsHomeVolumeName,
-			MountPath: getJenkinsHomePath(jenkins),
-			ReadOnly:  false,
-		},
+	var volumeMounts []corev1.VolumeMount
+
+	// Check if user has defined a jenkins-home volume mount
+	if len(jenkins.Spec.Master.Containers) > 0 {
+		for _, volumeMount := range jenkins.Spec.Master.Containers[0].VolumeMounts {
+			if volumeMount.Name == JenkinsHomeVolumeName {
+				volumeMounts = append(volumeMounts, volumeMount)
+				break
+			}
+		}
+	}
+
+	volumeMounts = append(volumeMounts, []corev1.VolumeMount{
 		{
 			Name:      jenkinsScriptsVolumeName,
 			MountPath: JenkinsScriptsVolumePath,
@@ -210,7 +217,7 @@ func GetJenkinsMasterContainerBaseVolumeMounts(jenkins *v1alpha2.Jenkins) []core
 			MountPath: jenkinsOperatorCredentialsVolumePath,
 			ReadOnly:  true,
 		},
-	}
+	}...)
 
 	if len(jenkins.Spec.GroovyScripts.Secret.Name) > 0 {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -155,4 +156,207 @@ func checkSecretVolumesPresence(jenkins *v1alpha2.Jenkins) (groovyExists bool, c
 		}
 	}
 	return groovyExists, cascExists
+}
+
+func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
+	t.Run("empty containers", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have base volume mounts (scripts, init-configuration, operator-credentials)
+		assert.Len(t, volumeMounts, 3)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
+		assert.Equal(t, jenkinsInitConfigurationVolumeName, volumeMounts[1].Name)
+		assert.Equal(t, jenkinsOperatorCredentialsVolumeName, volumeMounts[2].Name)
+	})
+
+	t.Run("container without jenkins-home volume mount", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{
+						{
+							Name: "jenkins-master",
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "some-other-volume",
+									MountPath: "/some/path",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have base volume mounts only (no jenkins-home)
+		assert.Len(t, volumeMounts, 3)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
+	})
+
+	t.Run("container with jenkins-home volume mount", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{
+						{
+							Name: "jenkins-master",
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      JenkinsHomeVolumeName,
+									MountPath: "/var/lib/jenkins",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have jenkins-home as first element + base volume mounts
+		assert.Len(t, volumeMounts, 4)
+		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
+		assert.Equal(t, "/var/lib/jenkins", volumeMounts[0].MountPath)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[1].Name)
+	})
+
+	t.Run("container with jenkins-home volume mount with custom path", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{
+						{
+							Name: "jenkins-master",
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      JenkinsHomeVolumeName,
+									MountPath: "/custom/jenkins/home",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have jenkins-home as first element with custom path
+		assert.Len(t, volumeMounts, 4)
+		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
+		assert.Equal(t, "/custom/jenkins/home", volumeMounts[0].MountPath)
+	})
+
+	t.Run("with groovy scripts secret", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{},
+				},
+				GroovyScripts: v1alpha2.GroovyScripts{
+					Customization: v1alpha2.Customization{
+						Secret: v1alpha2.SecretRef{
+							Name: "groovy-secret",
+						},
+					},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have base volume mounts + groovy scripts secret
+		assert.Len(t, volumeMounts, 4)
+		found := false
+		for _, vm := range volumeMounts {
+			if vm.Name == "gs-groovy-secret" {
+				found = true
+				assert.Equal(t, GroovyScriptsSecretVolumePath, vm.MountPath)
+				assert.True(t, vm.ReadOnly)
+			}
+		}
+		assert.True(t, found, "groovy scripts secret volume mount not found")
+	})
+
+	t.Run("with configuration as code secret", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{},
+				},
+				ConfigurationAsCode: v1alpha2.ConfigurationAsCode{
+					Customization: v1alpha2.Customization{
+						Secret: v1alpha2.SecretRef{
+							Name: "casc-secret",
+						},
+					},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have base volume mounts + casc secret
+		assert.Len(t, volumeMounts, 4)
+		found := false
+		for _, vm := range volumeMounts {
+			if vm.Name == "casc-casc-secret" {
+				found = true
+				assert.Equal(t, ConfigurationAsCodeSecretVolumePath, vm.MountPath)
+				assert.True(t, vm.ReadOnly)
+			}
+		}
+		assert.True(t, found, "casc secret volume mount not found")
+	})
+
+	t.Run("with jenkins-home and both secrets", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{
+						{
+							Name: "jenkins-master",
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      JenkinsHomeVolumeName,
+									MountPath: "/var/lib/jenkins",
+								},
+							},
+						},
+					},
+				},
+				GroovyScripts: v1alpha2.GroovyScripts{
+					Customization: v1alpha2.Customization{
+						Secret: v1alpha2.SecretRef{
+							Name: "groovy-secret",
+						},
+					},
+				},
+				ConfigurationAsCode: v1alpha2.ConfigurationAsCode{
+					Customization: v1alpha2.Customization{
+						Secret: v1alpha2.SecretRef{
+							Name: "casc-secret",
+						},
+					},
+				},
+			},
+		}
+
+		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
+
+		// Should have jenkins-home + base volume mounts + both secrets
+		assert.Len(t, volumeMounts, 6)
+		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
+	})
 }
