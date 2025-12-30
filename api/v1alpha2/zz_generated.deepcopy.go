@@ -138,6 +138,11 @@ func (in *Container) DeepCopyInto(out *Container) {
 		*out = new(corev1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StartupProbe != nil {
+		in, out := &in.StartupProbe, &out.StartupProbe
+		*out = new(corev1.Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Lifecycle != nil {
 		in, out := &in.Lifecycle, &out.Lifecycle
 		*out = new(corev1.Lifecycle)
@@ -322,6 +327,13 @@ func (in *JenkinsMaster) DeepCopyInto(out *JenkinsMaster) {
 	}
 	if in.Containers != nil {
 		in, out := &in.Containers, &out.Containers
+		*out = make([]Container, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.InitContainers != nil {
+		in, out := &in.InitContainers, &out.InitContainers
 		*out = make([]Container, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

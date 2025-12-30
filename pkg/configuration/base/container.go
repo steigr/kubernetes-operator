@@ -48,6 +48,10 @@ func (r *JenkinsBaseConfigurationReconciler) compareContainers(expected corev1.C
 		messages = append(messages, "Readiness probe has changed")
 		verbose = append(verbose, fmt.Sprintf("Readiness probe has changed to '%+v' in container '%s'", expected.ReadinessProbe, expected.Name))
 	}
+	if !reflect.DeepEqual(expected.StartupProbe, actual.StartupProbe) {
+		messages = append(messages, "Startup probe has changed")
+		verbose = append(verbose, fmt.Sprintf("Startup probe has changed to '%+v' in container '%s'", expected.StartupProbe, expected.Name))
+	}
 	if !compareContainerResources(expected.Resources, actual.Resources) {
 		messages = append(messages, "Resources have changed")
 		verbose = append(verbose, fmt.Sprintf("Resources have changed to '%+v' in container '%s'", expected.Resources, expected.Name))

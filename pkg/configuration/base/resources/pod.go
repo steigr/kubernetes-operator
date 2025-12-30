@@ -328,6 +328,7 @@ func ConvertJenkinsContainerToKubernetesContainer(container v1alpha2.Container) 
 		VolumeMounts:    container.VolumeMounts,
 		LivenessProbe:   container.LivenessProbe,
 		ReadinessProbe:  container.ReadinessProbe,
+		StartupProbe:    container.StartupProbe,
 		Lifecycle:       container.Lifecycle,
 		ImagePullPolicy: container.ImagePullPolicy,
 		SecurityContext: container.SecurityContext,
