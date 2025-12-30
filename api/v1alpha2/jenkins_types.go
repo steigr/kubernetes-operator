@@ -342,6 +342,8 @@ type JenkinsMaster struct {
 	//       memory: 600Mi
 	Containers []Container `json:"containers,omitempty"`
 
+	InitContainers []Container `json:"initContainers,omitempty"`
+
 	// ImagePullSecrets is an optional list of references to secrets in the same namespace to use for pulling any of the images used by this PodSpec.
 	// If specified, these secrets will be passed to individual puller implementations for them to use. For example,
 	// in the case of docker, only DockerConfig type secrets are honored.
