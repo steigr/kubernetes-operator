@@ -327,7 +327,7 @@ func TestReconcileJenkinsBaseConfiguration_validateImagePullSecrets(t *testing.T
 }
 
 func TestValidateJenkinsMasterPodEnvs(t *testing.T) {
-	validJenkinsOps := "-Djenkins.install.runSetupWizard=false -Djava.awt.headless=true"
+	validJenkinsOps := "-Djenkins.install.runSetupWizard=false -Djava.awt.headless=true -Dfile.encoding=UTF-8 -XX:+UseContainerSupport"
 	t.Run("happy", func(t *testing.T) {
 		jenkins := v1alpha2.Jenkins{
 			Spec: v1alpha2.JenkinsSpec{
@@ -364,7 +364,7 @@ func TestValidateJenkinsMasterPodEnvs(t *testing.T) {
 							Env: []corev1.EnvVar{
 								{
 									Name:  constants.JavaOpsVariableName,
-									Value: "-Djenkins.install.runSetupWizard=false",
+									Value: "-Djenkins.install.runSetupWizard=false -Dfile.encoding=UTF-8 -XX:+UseContainerSupport",
 								},
 							},
 						},
@@ -388,7 +388,7 @@ func TestValidateJenkinsMasterPodEnvs(t *testing.T) {
 							Env: []corev1.EnvVar{
 								{
 									Name:  constants.JavaOpsVariableName,
-									Value: "-Djava.awt.headless=true",
+									Value: "-Djava.awt.headless=true -Dfile.encoding=UTF-8 -XX:+UseContainerSupport",
 								},
 							},
 						},
@@ -402,6 +402,23 @@ func TestValidateJenkinsMasterPodEnvs(t *testing.T) {
 		got := baseReconcileLoop.validateJenkinsMasterPodEnvs()
 
 		assert.Equal(t, got, []string{"Jenkins Master container env 'JAVA_OPTS' doesn't have required flag '-Djenkins.install.runSetupWizard=false'"})
+	})
+	t.Run("empty containers", func(t *testing.T) {
+		jenkins := v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Containers: []v1alpha2.Container{},
+				},
+			},
+		}
+		baseReconcileLoop := New(configuration.Configuration{
+			Jenkins: &jenkins,
+		}, client.JenkinsAPIConnectionSettings{})
+		got := baseReconcileLoop.validateJenkinsMasterPodEnvs()
+
+		// Should return errors for missing required JAVA_OPTS flags, but not panic
+		assert.NotNil(t, got)
+		assert.Len(t, got, 4) // 4 required flags missing
 	})
 }
 

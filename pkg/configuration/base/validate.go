@@ -286,18 +286,22 @@ func (r *JenkinsBaseConfigurationReconciler) validateJenkinsMasterPodEnvs() []st
 	}
 
 	javaOpts := corev1.EnvVar{}
-	for _, userEnv := range r.Configuration.Jenkins.Spec.Master.Containers[0].Env {
-		if userEnv.Name == constants.JavaOpsVariableName {
-			javaOpts = userEnv
-		}
-		if _, overriding := baseEnvNames[userEnv.Name]; overriding {
-			messages = append(messages, fmt.Sprintf("Jenkins Master container env '%s' cannot be overridden", userEnv.Name))
+	if len(r.Configuration.Jenkins.Spec.Master.Containers) > 0 {
+		for _, userEnv := range r.Configuration.Jenkins.Spec.Master.Containers[0].Env {
+			if userEnv.Name == constants.JavaOpsVariableName {
+				javaOpts = userEnv
+			}
+			if _, overriding := baseEnvNames[userEnv.Name]; overriding {
+				messages = append(messages, fmt.Sprintf("Jenkins Master container env '%s' cannot be overridden", userEnv.Name))
+			}
 		}
 	}
 
 	requiredFlags := map[string]bool{
 		"-Djenkins.install.runSetupWizard=false": false,
 		"-Djava.awt.headless=true":               false,
+		"-Dfile.encoding=UTF-8":                  false,
+		"-XX:+UseContainerSupport":               false,
 	}
 	for _, setFlag := range strings.Split(javaOpts.Value, " ") {
 		for requiredFlag := range requiredFlags {
