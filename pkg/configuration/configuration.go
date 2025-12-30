@@ -301,7 +301,7 @@ func (c *Configuration) waitForJenkinsHealth(jenkinsURL string) error {
 			time.Sleep(retryInterval)
 			continue
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
 			return nil
