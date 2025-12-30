@@ -441,7 +441,7 @@ func TestValidateReservedVolumes(t *testing.T) {
 		got := baseReconcileLoop.validateReservedVolumes()
 		assert.Nil(t, got)
 	})
-	t.Run("used reserved name", func(t *testing.T) {
+	t.Run("user-defined jenkins-home volume is allowed", func(t *testing.T) {
 		jenkins := v1alpha2.Jenkins{
 			Spec: v1alpha2.JenkinsSpec{
 				Master: v1alpha2.JenkinsMaster{
@@ -458,7 +458,28 @@ func TestValidateReservedVolumes(t *testing.T) {
 		}, client.JenkinsAPIConnectionSettings{})
 		got := baseReconcileLoop.validateReservedVolumes()
 
-		assert.Equal(t, got, []string{"Jenkins Master pod volume 'jenkins-home' is reserved please choose different one"})
+		// User-defined jenkins-home volume should be allowed (not reserved)
+		assert.Nil(t, got)
+	})
+	t.Run("used reserved name for scripts volume", func(t *testing.T) {
+		jenkins := v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Volumes: []corev1.Volume{
+						{
+							Name: "scripts",
+						},
+					},
+				},
+			},
+		}
+		baseReconcileLoop := New(configuration.Configuration{
+			Jenkins: &jenkins,
+		}, client.JenkinsAPIConnectionSettings{})
+		got := baseReconcileLoop.validateReservedVolumes()
+
+		// scripts volume name is reserved
+		assert.Equal(t, got, []string{"Jenkins Master pod volume 'scripts' is reserved please choose different one"})
 	})
 }
 

@@ -98,17 +98,15 @@ func GetJenkinsMasterPodBaseVolumes(jenkins *v1alpha2.Jenkins) []corev1.Volume {
 	var scriptsVolumeDefaultMode int32 = 0777
 	var volumes []corev1.Volume
 
-	hasJenkinsHomeVolumeMount := false
-	if len(jenkins.Spec.Master.Containers) > 0 && len(jenkins.Spec.Master.Containers[0].VolumeMounts) > 0 {
-		for _, volumeMount := range jenkins.Spec.Master.Containers[0].VolumeMounts {
-			if volumeMount.Name == JenkinsHomeVolumeName {
-				hasJenkinsHomeVolumeMount = true
-				break
-			}
+	hasJenkinsHomeVolume := false
+	for _, volume := range jenkins.Spec.Master.Volumes {
+		if volume.Name == JenkinsHomeVolumeName {
+			hasJenkinsHomeVolume = true
+			break
 		}
 	}
 
-	if !hasJenkinsHomeVolumeMount {
+	if !hasJenkinsHomeVolume {
 		volumes = append(volumes, corev1.Volume{
 			Name: JenkinsHomeVolumeName,
 			VolumeSource: corev1.VolumeSource{

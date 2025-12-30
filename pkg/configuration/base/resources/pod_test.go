@@ -145,6 +145,82 @@ func TestGetJenkinsMasterPodBaseVolumes(t *testing.T) {
 		assert.True(t, groovyExists)
 		assert.True(t, cascExists)
 	})
+	t.Run("empty jenkins spec adds default jenkins-home volume", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{},
+		}
+
+		volumes := GetJenkinsMasterPodBaseVolumes(jenkins)
+
+		// Should have jenkins-home volume as first element
+		found := false
+		for _, volume := range volumes {
+			if volume.Name == JenkinsHomeVolumeName {
+				found = true
+				assert.NotNil(t, volume.VolumeSource.EmptyDir)
+				break
+			}
+		}
+		assert.True(t, found, "jenkins-home volume not found")
+	})
+	t.Run("user-defined jenkins-home volume should not add default", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Volumes: []corev1.Volume{
+						{
+							Name: JenkinsHomeVolumeName,
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "my-pvc",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		volumes := GetJenkinsMasterPodBaseVolumes(jenkins)
+
+		// Should NOT have jenkins-home volume in base volumes (user provides it)
+		jenkinsHomeCount := 0
+		for _, volume := range volumes {
+			if volume.Name == JenkinsHomeVolumeName {
+				jenkinsHomeCount++
+			}
+		}
+		assert.Equal(t, 0, jenkinsHomeCount, "jenkins-home volume should not be in base volumes when user defines it")
+	})
+	t.Run("user-defined other volume should still add default jenkins-home", func(t *testing.T) {
+		jenkins := &v1alpha2.Jenkins{
+			Spec: v1alpha2.JenkinsSpec{
+				Master: v1alpha2.JenkinsMaster{
+					Volumes: []corev1.Volume{
+						{
+							Name: "some-other-volume",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		volumes := GetJenkinsMasterPodBaseVolumes(jenkins)
+
+		// Should have jenkins-home volume
+		found := false
+		for _, volume := range volumes {
+			if volume.Name == JenkinsHomeVolumeName {
+				found = true
+				assert.NotNil(t, volume.VolumeSource.EmptyDir)
+				break
+			}
+		}
+		assert.True(t, found, "jenkins-home volume not found")
+	})
 }
 
 func checkSecretVolumesPresence(jenkins *v1alpha2.Jenkins) (groovyExists bool, cascExists bool) {
