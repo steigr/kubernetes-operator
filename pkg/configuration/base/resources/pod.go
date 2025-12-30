@@ -266,6 +266,7 @@ func NewJenkinsMasterContainer(jenkins *v1alpha2.Jenkins) corev1.Container {
 		Lifecycle:       jenkinsContainer.Lifecycle,
 		LivenessProbe:   jenkinsContainer.LivenessProbe,
 		ReadinessProbe:  jenkinsContainer.ReadinessProbe,
+		StartupProbe:    jenkinsContainer.StartupProbe,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          httpPortName,
