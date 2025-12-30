@@ -3,6 +3,8 @@ package configuration
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
@@ -229,6 +231,12 @@ func (c *Configuration) GetJenkinsClientFromSecret() (jenkinsclient.Jenkins, err
 	if err != nil {
 		return nil, err
 	}
+
+	// Check if Jenkins is ready by polling the health endpoint
+	if err := c.waitForJenkinsHealth(jenkinsURL); err != nil {
+		return nil, err
+	}
+
 	credentialsSecret := &corev1.Secret{}
 	err = c.Client.Get(context.TODO(), types.NamespacedName{Name: resources.GetOperatorCredentialsSecretName(c.Jenkins), Namespace: c.Jenkins.ObjectMeta.Namespace}, credentialsSecret)
 	if err != nil {
@@ -276,4 +284,31 @@ func (c *Configuration) GetJenkinsClientFromSecret() (jenkinsclient.Jenkins, err
 		jenkinsURL,
 		string(credentialsSecret.Data[resources.OperatorCredentialsSecretUserNameKey]),
 		string(credentialsSecret.Data[resources.OperatorCredentialsSecretTokenKey]))
+}
+
+// waitForJenkinsHealth checks if Jenkins is ready by polling the health endpoint.
+// It retries up to 3 times with 1 second intervals.
+func (c *Configuration) waitForJenkinsHealth(jenkinsURL string) error {
+	healthURL := strings.TrimSuffix(jenkinsURL, "/") + "/health/"
+	maxRetries := 3
+	retryInterval := time.Second
+
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		resp, err := http.Get(healthURL)
+		if err != nil {
+			lastErr = err
+			time.Sleep(retryInterval)
+			continue
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode == http.StatusOK {
+			return nil
+		}
+		lastErr = stackerr.Errorf("Jenkins health check returned status %d", resp.StatusCode)
+		time.Sleep(retryInterval)
+	}
+
+	return stackerr.Wrapf(lastErr, "Jenkins health check failed after %d retries", maxRetries)
 }
