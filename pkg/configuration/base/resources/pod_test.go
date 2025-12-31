@@ -246,11 +246,13 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have base volume mounts (scripts, init-configuration, operator-credentials)
-		assert.Len(t, volumeMounts, 3)
-		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
-		assert.Equal(t, jenkinsInitConfigurationVolumeName, volumeMounts[1].Name)
-		assert.Equal(t, jenkinsOperatorCredentialsVolumeName, volumeMounts[2].Name)
+		// Should have jenkins-home (default) + base volume mounts (scripts, init-configuration, operator-credentials)
+		assert.Len(t, volumeMounts, 4)
+		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
+		assert.Equal(t, "/var/lib/jenkins", volumeMounts[0].MountPath)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[1].Name)
+		assert.Equal(t, jenkinsInitConfigurationVolumeName, volumeMounts[2].Name)
+		assert.Equal(t, jenkinsOperatorCredentialsVolumeName, volumeMounts[3].Name)
 	})
 
 	t.Run("container without jenkins-home volume mount", func(t *testing.T) {
@@ -274,9 +276,10 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have base volume mounts only (no jenkins-home)
-		assert.Len(t, volumeMounts, 3)
-		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
+		// Should have jenkins-home (default) + base volume mounts
+		assert.Len(t, volumeMounts, 4)
+		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[1].Name)
 	})
 
 	t.Run("container with jenkins-home volume mount", func(t *testing.T) {
@@ -300,11 +303,11 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have jenkins-home as first element + base volume mounts
-		assert.Len(t, volumeMounts, 4)
-		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
-		assert.Equal(t, "/var/lib/jenkins", volumeMounts[0].MountPath)
-		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[1].Name)
+		// Should have only base volume mounts (no default jenkins-home since user defined it)
+		assert.Len(t, volumeMounts, 3)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
+		assert.Equal(t, jenkinsInitConfigurationVolumeName, volumeMounts[1].Name)
+		assert.Equal(t, jenkinsOperatorCredentialsVolumeName, volumeMounts[2].Name)
 	})
 
 	t.Run("container with jenkins-home volume mount with custom path", func(t *testing.T) {
@@ -328,10 +331,9 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have jenkins-home as first element with custom path
-		assert.Len(t, volumeMounts, 4)
-		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
-		assert.Equal(t, "/custom/jenkins/home", volumeMounts[0].MountPath)
+		// Should have only base volume mounts (no default jenkins-home since user defined it)
+		assert.Len(t, volumeMounts, 3)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
 	})
 
 	t.Run("with groovy scripts secret", func(t *testing.T) {
@@ -352,8 +354,8 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have base volume mounts + groovy scripts secret
-		assert.Len(t, volumeMounts, 4)
+		// Should have jenkins-home (default) + base volume mounts + groovy scripts secret
+		assert.Len(t, volumeMounts, 5)
 		found := false
 		for _, vm := range volumeMounts {
 			if vm.Name == "gs-groovy-secret" {
@@ -383,8 +385,8 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have base volume mounts + casc secret
-		assert.Len(t, volumeMounts, 4)
+		// Should have jenkins-home (default) + base volume mounts + casc secret
+		assert.Len(t, volumeMounts, 5)
 		found := false
 		for _, vm := range volumeMounts {
 			if vm.Name == "casc-casc-secret" {
@@ -431,8 +433,8 @@ func TestGetJenkinsMasterContainerBaseVolumeMounts(t *testing.T) {
 
 		volumeMounts := GetJenkinsMasterContainerBaseVolumeMounts(jenkins)
 
-		// Should have jenkins-home + base volume mounts + both secrets
-		assert.Len(t, volumeMounts, 6)
-		assert.Equal(t, JenkinsHomeVolumeName, volumeMounts[0].Name)
+		// Should have base volume mounts + both secrets (no default jenkins-home since user defined it)
+		assert.Len(t, volumeMounts, 5)
+		assert.Equal(t, jenkinsScriptsVolumeName, volumeMounts[0].Name)
 	})
 }

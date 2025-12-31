@@ -190,12 +190,22 @@ func GetJenkinsMasterContainerBaseVolumeMounts(jenkins *v1alpha2.Jenkins) []core
 	var volumeMounts []corev1.VolumeMount
 
 	// Check if user has defined a jenkins-home volume mount
+	hasJenkinsHomeVolumeName := false
 	if len(jenkins.Spec.Master.Containers) > 0 {
 		for _, volumeMount := range jenkins.Spec.Master.Containers[0].VolumeMounts {
 			if volumeMount.Name == JenkinsHomeVolumeName {
-				volumeMounts = append(volumeMounts, volumeMount)
+				hasJenkinsHomeVolumeName = true
 				break
 			}
+		}
+	}
+
+	if !hasJenkinsHomeVolumeName {
+		volumeMounts = []corev1.VolumeMount{
+			{
+				Name:      JenkinsHomeVolumeName,
+				MountPath: getJenkinsHomePath(jenkins),
+			},
 		}
 	}
 
