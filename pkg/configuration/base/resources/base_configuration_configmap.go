@@ -66,29 +66,36 @@ const disableInsecureFeatures = `
 import jenkins.*
 import jenkins.model.*
 import hudson.model.*
+import hudson.util.*
 import jenkins.security.s2m.*
 
 def jenkins = Jenkins.instance
 
-println("Disabling insecure Jenkins features...")
-
-println("Disabling CLI access of /cli URL...")
-def remove = { list ->
-    list.each { item ->
-        if (item.getClass().name.contains("CLIAction")) {
-            println("Removing extension ${item.getClass().name}")
-            list.remove(item)
-        }
-    }
+def deprecatedStartingAt = new VersionNumber('2.492')
+if (jenkins.getVersion().isOlderThan(deprecatedStartingAt)) {
+	println("Disabling insecure Jenkins features...")
+	println("Disabling insecure protocols...")
+	println("Old protocols: [" + jenkins.getAgentProtocols().join(", ") + "]")
+	HashSet<String> newProtocols = new HashSet<>(jenkins.getAgentProtocols())
+	newProtocols.removeAll(Arrays.asList("JNLP3-connect", "JNLP2-connect", "JNLP-connect", "CLI-connect"))
+	println("New protocols: [" + newProtocols.join(", ") + "]")
+	jenkins.setAgentProtocols(newProtocols)
+	println("Disabling CLI access of /cli URL...")
+	def remove = { list ->
+			list.each { item ->
+					if (item.getClass().name.contains("CLIAction")) {
+							println("Removing extension ${item.getClass().name}")
+							list.remove(item)
+					}
+			}
+	}
+	remove(jenkins.getExtensionList(RootAction.class))
+	remove(jenkins.actions)
+	if (jenkins.getDescriptor("jenkins.CLI") != null) {
+			jenkins.getDescriptor("jenkins.CLI").get().setEnabled(false)
+	}
+	jenkins.save()
 }
-remove(jenkins.getExtensionList(RootAction.class))
-remove(jenkins.actions)
-
-if (jenkins.getDescriptor("jenkins.CLI") != null) {
-    jenkins.getDescriptor("jenkins.CLI").get().setEnabled(false)
-}
-
-jenkins.save()
 `
 
 const configureKubernetesPluginFmt = `
