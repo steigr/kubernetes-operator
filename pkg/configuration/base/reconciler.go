@@ -266,18 +266,6 @@ func compareMap(expected, actual map[string]string) bool {
 	return true
 }
 
-func compareEnv(expected, actual []corev1.EnvVar) bool {
-	var actualEnv []corev1.EnvVar
-	for _, env := range actual {
-		if env.Name == "KUBERNETES_PORT_443_TCP_ADDR" || env.Name == "KUBERNETES_PORT" ||
-			env.Name == "KUBERNETES_PORT_443_TCP" || env.Name == "KUBERNETES_SERVICE_HOST" {
-			continue
-		}
-		actualEnv = append(actualEnv, env)
-	}
-	return reflect.DeepEqual(expected, actualEnv)
-}
-
 var (
 	ignoredMountedPaths = []string{
 		// Service account token volume mount path
@@ -285,20 +273,52 @@ var (
 		// Azure Workload Identity token volume mount path
 		"/var/run/secrets/azure/tokens",
 	}
+
+	ignoreEnvironmentVariables = []string{
+		// Kubernetes environment variables
+		"KUBERNETES_PORT_443_TCP_ADDR",
+		"KUBERNETES_PORT",
+		"KUBERNETES_PORT_443_TCP",
+		"KUBERNETES_SERVICE_HOST",
+		// Azure workload identity variables
+		"AZURE_CLIENT_ID",
+		"AZURE_TENANT_ID",
+		"AZURE_FEDERATED_TOKEN_FILE",
+		"AZURE_AUTHORITY_HOST",
+	}
 )
+
+func compareEnv(expected, actual []corev1.EnvVar) bool {
+	var actualEnv []corev1.EnvVar
+
+	for _, env := range actual {
+		canIgnore := false
+		for _, ignore := range ignoreEnvironmentVariables {
+			if env.Name == ignore {
+				canIgnore = true
+				break
+			}
+		}
+		if canIgnore {
+			continue
+		}
+		actualEnv = append(actualEnv, env)
+	}
+	return reflect.DeepEqual(expected, actualEnv)
+}
 
 // CompareContainerVolumeMounts returns true if two containers volume mounts are the same.
 func CompareContainerVolumeMounts(expected corev1.Container, actual corev1.Container) bool {
 	var withoutFilteredVolumeMounts []corev1.VolumeMount
 	for _, volumeMount := range actual.VolumeMounts {
-		ignore := false
+		canIgnore := false
 		for _, ignoredPath := range ignoredMountedPaths {
 			if volumeMount.MountPath == ignoredPath {
-				ignore = true
+				canIgnore = true
 				break
 			}
 		}
-		if !ignore {
+		if !canIgnore {
 			withoutFilteredVolumeMounts = append(withoutFilteredVolumeMounts, volumeMount)
 		}
 	}

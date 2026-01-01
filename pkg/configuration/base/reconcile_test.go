@@ -839,6 +839,370 @@ func Test_compareEnv(t *testing.T) {
 
 		assert.False(t, got)
 	})
+	t.Run("with Azure workload identity envs", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "name",
+				Value: "value",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "name",
+				Value: "value",
+			},
+			{
+				Name:  "AZURE_CLIENT_ID",
+				Value: "some-client-id",
+			},
+			{
+				Name:  "AZURE_TENANT_ID",
+				Value: "some-tenant-id",
+			},
+			{
+				Name:  "AZURE_FEDERATED_TOKEN_FILE",
+				Value: "/var/run/secrets/azure/tokens/azure-identity-token",
+			},
+			{
+				Name:  "AZURE_AUTHORITY_HOST",
+				Value: "https://login.microsoftonline.com/",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("with both Kubernetes and Azure envs", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "MY_APP_VAR",
+				Value: "my-value",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "MY_APP_VAR",
+				Value: "my-value",
+			},
+			{
+				Name:  "KUBERNETES_PORT_443_TCP_ADDR",
+				Value: "10.0.0.1",
+			},
+			{
+				Name:  "KUBERNETES_PORT",
+				Value: "tcp://10.0.0.1:443",
+			},
+			{
+				Name:  "KUBERNETES_PORT_443_TCP",
+				Value: "tcp://10.0.0.1:443",
+			},
+			{
+				Name:  "KUBERNETES_SERVICE_HOST",
+				Value: "10.0.0.1",
+			},
+			{
+				Name:  "AZURE_CLIENT_ID",
+				Value: "some-client-id",
+			},
+			{
+				Name:  "AZURE_TENANT_ID",
+				Value: "some-tenant-id",
+			},
+			{
+				Name:  "AZURE_FEDERATED_TOKEN_FILE",
+				Value: "/var/run/secrets/azure/tokens/azure-identity-token",
+			},
+			{
+				Name:  "AZURE_AUTHORITY_HOST",
+				Value: "https://login.microsoftonline.com/",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("empty expected with only ignored envs in actual", func(t *testing.T) {
+		expected := []corev1.EnvVar{}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "KUBERNETES_PORT",
+				Value: "tcp://10.0.0.1:443",
+			},
+			{
+				Name:  "AZURE_CLIENT_ID",
+				Value: "some-client-id",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		// Note: empty slice []EnvVar{} vs nil (all were filtered out)
+		// reflect.DeepEqual returns false when comparing empty slice to nil
+		assert.False(t, got)
+	})
+	t.Run("nil expected and nil actual", func(t *testing.T) {
+		var expected []corev1.EnvVar
+		var actual []corev1.EnvVar
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("nil expected with only ignored envs in actual", func(t *testing.T) {
+		var expected []corev1.EnvVar
+		actual := []corev1.EnvVar{
+			{
+				Name:  "KUBERNETES_PORT",
+				Value: "tcp://10.0.0.1:443",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("multiple envs in correct order", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("multiple envs in different order returns false", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.False(t, got)
+	})
+	t.Run("ignored env interleaved with non-ignored envs", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "KUBERNETES_PORT",
+				Value: "tcp://10.0.0.1:443",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("extra non-ignored env in actual returns false", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.False(t, got)
+	})
+	t.Run("missing env in actual returns false", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+			{
+				Name:  "VAR2",
+				Value: "value2",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.False(t, got)
+	})
+	t.Run("env with different value returns false", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "value1",
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name:  "VAR1",
+				Value: "different-value",
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.False(t, got)
+	})
+	t.Run("env with ValueFrom are compared", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name: "SECRET_VAR",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-secret",
+						},
+						Key: "password",
+					},
+				},
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name: "SECRET_VAR",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-secret",
+						},
+						Key: "password",
+					},
+				},
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
+	t.Run("env with different ValueFrom returns false", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name: "SECRET_VAR",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-secret",
+						},
+						Key: "password",
+					},
+				},
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name: "SECRET_VAR",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "different-secret",
+						},
+						Key: "password",
+					},
+				},
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.False(t, got)
+	})
+	t.Run("env with ConfigMapKeyRef are compared", func(t *testing.T) {
+		expected := []corev1.EnvVar{
+			{
+				Name: "CONFIG_VAR",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-config",
+						},
+						Key: "setting",
+					},
+				},
+			},
+		}
+		actual := []corev1.EnvVar{
+			{
+				Name: "CONFIG_VAR",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-config",
+						},
+						Key: "setting",
+					},
+				},
+			},
+		}
+
+		got := compareEnv(expected, actual)
+
+		assert.True(t, got)
+	})
 }
 
 func TestCompareMap(t *testing.T) {
