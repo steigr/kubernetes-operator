@@ -4,13 +4,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
 	"github.com/jenkinsci/kubernetes-operator/pkg/configuration"
+
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+)
+
+const (
+	testBackupContainerName = "backup"
 )
 
 func getTestLogger() logr.Logger {
@@ -27,7 +32,7 @@ func getBaseJenkins() *v1alpha2.Jenkins {
 			Master: v1alpha2.JenkinsMaster{
 				Containers: []v1alpha2.Container{
 					{Name: "jenkins-master"},
-					{Name: "backup"},
+					{Name: testBackupContainerName},
 				},
 			},
 		},
@@ -66,7 +71,7 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 		jenkins := getBaseJenkins()
 		jenkins.Spec.Restore.ContainerName = "non-existent-container"
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Spec.Backup.Interval = 30
 		config := configuration.Configuration{
@@ -84,7 +89,7 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 		jenkins.Spec.Backup.ContainerName = "non-existent-container"
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Spec.Backup.Interval = 30
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -98,9 +103,9 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 
 	t.Run("error when restore action exec is not configured", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		// Action.Exec is nil
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Spec.Backup.Interval = 30
 		config := configuration.Configuration{
@@ -115,10 +120,10 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 
 	t.Run("error when backup action exec is not configured", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		// Action.Exec is nil
 		jenkins.Spec.Backup.Interval = 30
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -132,10 +137,10 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 
 	t.Run("error when backup interval is not configured", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Spec.Backup.Interval = 0
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -149,7 +154,7 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 
 	t.Run("error when restore is configured but backup is not", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
 		// Backup is not configured
 		config := configuration.Configuration{
@@ -164,7 +169,7 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 
 	t.Run("error when backup is configured but restore is not", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Spec.Backup.Interval = 30
 		// Restore is not configured
@@ -180,10 +185,10 @@ func TestBackupAndRestore_Validate(t *testing.T) {
 
 	t.Run("valid configuration with all required fields", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Spec.Backup.Interval = 30
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -350,7 +355,7 @@ func TestBackupAndRestore_EnsureBackupTrigger(t *testing.T) {
 		triggers = backupTriggers{triggers: make(map[string]backupTrigger)}
 
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Interval = 30
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -395,7 +400,7 @@ func TestBackupAndRestore_EnsureBackupTrigger(t *testing.T) {
 		triggers = backupTriggers{triggers: make(map[string]backupTrigger)}
 
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Interval = 60
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -427,7 +432,7 @@ func TestBackupAndRestore_EnsureBackupTrigger(t *testing.T) {
 		triggers = backupTriggers{triggers: make(map[string]backupTrigger)}
 
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Interval = 30
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -467,7 +472,7 @@ func TestBackupAndRestore_Restore(t *testing.T) {
 
 	t.Run("skips restore when restore action exec is nil", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		// Action.Exec is nil
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -481,7 +486,7 @@ func TestBackupAndRestore_Restore(t *testing.T) {
 
 	t.Run("skips restore when already restored", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Restore.ContainerName = "backup"
+		jenkins.Spec.Restore.ContainerName = testBackupContainerName
 		jenkins.Spec.Restore.Action.Exec = &corev1.ExecAction{Command: []string{"restore.sh"}}
 		jenkins.Status.RestoredBackup = 1 // Already restored
 		config := configuration.Configuration{
@@ -511,7 +516,7 @@ func TestBackupAndRestore_Backup(t *testing.T) {
 
 	t.Run("skips backup when backup action exec is nil", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		// Action.Exec is nil
 		config := configuration.Configuration{
 			Jenkins: jenkins,
@@ -525,7 +530,7 @@ func TestBackupAndRestore_Backup(t *testing.T) {
 
 	t.Run("skips backup when pending equals last backup", func(t *testing.T) {
 		jenkins := getBaseJenkins()
-		jenkins.Spec.Backup.ContainerName = "backup"
+		jenkins.Spec.Backup.ContainerName = testBackupContainerName
 		jenkins.Spec.Backup.Action.Exec = &corev1.ExecAction{Command: []string{"backup.sh"}}
 		jenkins.Status.PendingBackup = 5
 		jenkins.Status.LastBackup = 5 // Same as pending
