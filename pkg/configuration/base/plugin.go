@@ -55,11 +55,18 @@ func (r *JenkinsBaseConfigurationReconciler) verifyPlugins(jenkinsClient jenkins
 }
 
 func isPluginVersionCompatible(plugins *gojenkins.Plugins, plugin v1alpha2.Plugin) (gojenkins.Plugin, bool) {
+	if plugin.Version == "latest" {
+		return gojenkins.Plugin{}, false
+	}
+
 	p := plugins.Contains(plugin.Name)
 	if p == nil {
 		return gojenkins.Plugin{}, false
 	}
 
+	if len(p.Version) == 0 {
+		return gojenkins.Plugin{}, false
+	}
 	return *p, p.Version == plugin.Version
 }
 
