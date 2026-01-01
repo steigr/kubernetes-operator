@@ -278,16 +278,32 @@ func compareEnv(expected, actual []corev1.EnvVar) bool {
 	return reflect.DeepEqual(expected, actualEnv)
 }
 
+var (
+	ignoredMountedPaths = []string{
+		// Service account token volume mount path
+		"/var/run/secrets/kubernetes.io/serviceaccount",
+		// Azure Workload Identity token volume mount path
+		"/var/run/secrets/azure/tokens",
+	}
+)
+
 // CompareContainerVolumeMounts returns true if two containers volume mounts are the same.
 func CompareContainerVolumeMounts(expected corev1.Container, actual corev1.Container) bool {
-	var withoutServiceAccount []corev1.VolumeMount
+	var withoutFilteredVolumeMounts []corev1.VolumeMount
 	for _, volumeMount := range actual.VolumeMounts {
-		if volumeMount.MountPath != "/var/run/secrets/kubernetes.io/serviceaccount" {
-			withoutServiceAccount = append(withoutServiceAccount, volumeMount)
+		ignore := false
+		for _, ignoredPath := range ignoredMountedPaths {
+			if volumeMount.MountPath == ignoredPath {
+				ignore = true
+				break
+			}
+		}
+		if !ignore {
+			withoutFilteredVolumeMounts = append(withoutFilteredVolumeMounts, volumeMount)
 		}
 	}
 
-	return reflect.DeepEqual(expected.VolumeMounts, withoutServiceAccount)
+	return reflect.DeepEqual(expected.VolumeMounts, withoutFilteredVolumeMounts)
 }
 
 // compareVolumes returns true if Jenkins pod and Jenkins CR volumes are the same

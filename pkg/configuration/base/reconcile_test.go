@@ -95,6 +95,328 @@ func TestCompareContainerVolumeMounts(t *testing.T) {
 
 		assert.False(t, got)
 	})
+	t.Run("happy with azure workload identity token", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+				},
+				{
+					Name:      "azure-identity-token",
+					MountPath: "/var/run/secrets/azure/tokens",
+					ReadOnly:  true,
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.True(t, got)
+	})
+	t.Run("happy with both service account and azure workload identity tokens", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+				},
+				{
+					Name:      "jenkins-operator-example-token-dh4r9",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+				{
+					Name:      "azure-identity-token",
+					MountPath: "/var/run/secrets/azure/tokens",
+					ReadOnly:  true,
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.True(t, got)
+	})
+	t.Run("empty expected and actual volume mounts", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		// Note: empty slice []VolumeMount{} in expected vs nil slice in withoutFilteredVolumeMounts
+		// reflect.DeepEqual returns false when comparing empty slice to nil
+		assert.False(t, got)
+	})
+	t.Run("empty expected with only ignored paths in actual", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "jenkins-operator-example-token-dh4r9",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+				{
+					Name:      "azure-identity-token",
+					MountPath: "/var/run/secrets/azure/tokens",
+					ReadOnly:  true,
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		// Note: empty slice []VolumeMount{} vs nil (all were filtered out)
+		// reflect.DeepEqual returns false when comparing empty slice to nil
+		assert.False(t, got)
+	})
+	t.Run("nil expected and nil actual volume mounts", func(t *testing.T) {
+		expectedContainer := corev1.Container{}
+		actualContainer := corev1.Container{}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.True(t, got)
+	})
+	t.Run("nil expected with only ignored paths in actual", func(t *testing.T) {
+		expectedContainer := corev1.Container{}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "jenkins-operator-example-token-dh4r9",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.True(t, got)
+	})
+	t.Run("multiple volume mounts in correct order", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+				{
+					Name:      "jenkins-operator-example-token-dh4r9",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.True(t, got)
+	})
+	t.Run("multiple volume mounts in different order returns false", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.False(t, got)
+	})
+	t.Run("volume mount with different properties returns false", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+					ReadOnly:  false,
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+					ReadOnly:  true,
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.False(t, got)
+	})
+	t.Run("ignored path interleaved with non-ignored paths", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+				{
+					Name:      "jenkins-operator-example-token-dh4r9",
+					MountPath: "/var/run/secrets/kubernetes.io/serviceaccount",
+					ReadOnly:  true,
+				},
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.True(t, got)
+	})
+	t.Run("extra volume mount in actual returns false", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+				},
+				{
+					Name:      "extra-volume",
+					MountPath: "/extra/path",
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.False(t, got)
+	})
+	t.Run("missing volume mount in actual returns false", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+				{
+					Name:      "volume-2",
+					MountPath: "/mount/path2",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-1",
+					MountPath: "/mount/path1",
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.False(t, got)
+	})
+	t.Run("subPath property is compared", func(t *testing.T) {
+		expectedContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+					SubPath:   "subpath",
+				},
+			},
+		}
+		actualContainer := corev1.Container{
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "volume-name",
+					MountPath: "/mount/path",
+					SubPath:   "different-subpath",
+				},
+			},
+		}
+
+		got := CompareContainerVolumeMounts(expectedContainer, actualContainer)
+
+		assert.False(t, got)
+	})
 }
 
 func TestCompareVolumes(t *testing.T) {
