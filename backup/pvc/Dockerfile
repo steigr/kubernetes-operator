@@ -29,4 +29,4 @@ RUN chmod -R a+rx /home/user
 WORKDIR /home/user/bin
 USER user
 
-CMD ./run.sh
+CMD [ "./run.sh" ]
