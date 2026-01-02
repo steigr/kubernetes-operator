@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
@@ -95,6 +96,18 @@ func RenderJenkinsCR(name, namespace string, seedJob *[]v1alpha2.SeedJob, groovy
 							{
 								Name:  "TEST_ENV",
 								Value: "test_env_value",
+							},
+							{
+								Name: "JAVA_OPTS",
+								Value: strings.Join(
+									[]string{
+										"-Dfile.encoding=UTF-8",
+										"-XX:+UseContainerSupport",
+										"-Djenkins.install.runSetupWizard=false",
+										"-Djava.awt.headless=true",
+									},
+									" ",
+								),
 							},
 						},
 						ReadinessProbe: &corev1.Probe{

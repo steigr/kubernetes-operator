@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jenkinsci/kubernetes-operator/api/v1alpha2"
@@ -110,6 +111,20 @@ func createJenkinsWithBackupAndRestoreConfigured(name, namespace string) *v1alph
 					{
 						Name:  resources.JenkinsMasterContainerName,
 						Image: JenkinsTestImage,
+						Env: []corev1.EnvVar{
+							{
+								Name: "JAVA_OPTS",
+								Value: strings.Join(
+									[]string{
+										"-Dfile.encoding=UTF-8",
+										"-XX:+UseContainerSupport",
+										"-Djenkins.install.runSetupWizard=false",
+										"-Djava.awt.headless=true",
+									},
+									" ",
+								),
+							},
+						},
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								Name:      "plugins-cache",
